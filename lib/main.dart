@@ -625,7 +625,7 @@ class ChatPlaygroundProvider extends ChangeNotifier {
         modelType: modelInfo.modelType,
         isThinking: modelInfo.supportThinking,
         tools: tools,
-        systemInstruction: "You are a helpful local assistant named Antigravity AI, running entirely offline on macOS using flutter_gemma and Metal acceleration.",
+        systemInstruction: "You are a helpful local assistant named Darshan AI, running entirely offline on macOS using flutter_gemma and Metal acceleration.",
       );
 
       _activeModelInfo = modelInfo;
@@ -1095,7 +1095,7 @@ class MainAppWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     final settings = MultiProvider.of<SettingsProvider>(context);
     return MaterialApp(
-      title: 'Antigravity AI',
+      title: 'DARSHAN AI',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.dark(settings.accentColor),
       home: const MainLayoutScreen(),
@@ -1150,7 +1150,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                           ),
                           const SizedBox(width: 12),
                           const Text(
-                            'ANTIGRAVITY',
+                            'DARSHAN AI',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w900,
@@ -1905,50 +1905,65 @@ class _ChatPlaygroundViewState extends State<ChatPlaygroundView> {
           ],
           
           Flexible(
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: isUser ? settings.accentColor : AppColors.cardBackground,
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(16),
-                  topRight: const Radius.circular(16),
-                  bottomLeft: isUser ? const Radius.circular(16) : Radius.zero,
-                  bottomRight: isUser ? Radius.zero : const Radius.circular(16),
-                ),
-                border: isUser ? null : Border.all(color: AppColors.border.withOpacity(0.4)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Image Attachment Preview inside chat bubble
-                  if (msg.hasImage) ...[
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 12.0),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 320, maxHeight: 200),
-                          child: Image.memory(
-                            msg.imageBytes!,
-                            fit: BoxFit.cover,
-                          ),
-                        ),
+            child: Column(
+              crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SelectionArea(
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: isUser ? settings.accentColor : AppColors.cardBackground,
+                      borderRadius: BorderRadius.only(
+                        topLeft: const Radius.circular(16),
+                        topRight: const Radius.circular(16),
+                        bottomLeft: isUser ? const Radius.circular(16) : Radius.zero,
+                        bottomRight: isUser ? Radius.zero : const Radius.circular(16),
                       ),
+                      border: isUser ? null : Border.all(color: AppColors.border.withOpacity(0.4)),
                     ),
-                  ],
-                  
-                  // Main message body
-                  Text(
-                    msg.text,
-                    style: TextStyle(
-                      color: isUser ? Colors.white : AppColors.textPrimary,
-                      fontSize: 14.5,
-                      height: 1.45,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Image Attachment Preview inside chat bubble
+                        if (msg.hasImage) ...[
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 12.0),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: ConstrainedBox(
+                                constraints: const BoxConstraints(maxWidth: 320, maxHeight: 200),
+                                child: Image.memory(
+                                  msg.imageBytes!,
+                                  fit: BoxFit.cover,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                        
+                        // Main message body with markdown & code support
+                        FormattedMessageView(
+                          text: msg.text,
+                          isUser: isUser,
+                          accentColor: settings.accentColor,
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
+                ),
+                // Small Action Row below the bubble for quick copying
+                Padding(
+                  padding: const EdgeInsets.only(top: 4, left: 4, right: 4),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _SmallCopyIconButton(textToCopy: msg.text),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
           
@@ -1981,6 +1996,13 @@ class _ChatPlaygroundViewState extends State<ChatPlaygroundView> {
   }
 
   Widget _buildComposeArea(BuildContext context, SettingsProvider settings, ChatPlaygroundProvider chat) {
+    void handleSend() {
+      if (_controller.text.trim().isNotEmpty || chat.selectedImageBytes != null) {
+        chat.sendMessage(_controller.text);
+        _controller.clear();
+      }
+    }
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 24.0),
       decoration: BoxDecoration(
@@ -2039,21 +2061,31 @@ class _ChatPlaygroundViewState extends State<ChatPlaygroundView> {
                 
               const SizedBox(width: 10),
               
-              // Text Compose field
+              // Text Compose field with Enter key logic
               Expanded(
-                child: TextField(
-                  controller: _controller,
-                  maxLines: null,
-                  style: const TextStyle(fontSize: 14),
-                  decoration: const InputDecoration(
-                    hintText: 'Ask your local AI a question or supply an image...',
-                  ),
-                  onSubmitted: (val) {
-                    if (val.trim().isNotEmpty || chat.selectedImageBytes != null) {
-                      chat.sendMessage(val);
-                      _controller.clear();
+                child: Focus(
+                  onKeyEvent: (node, event) {
+                    if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.enter) {
+                      if (HardwareKeyboard.instance.isShiftPressed) {
+                        return KeyEventResult.ignored;
+                      } else {
+                        handleSend();
+                        return KeyEventResult.handled;
+                      }
                     }
+                    return KeyEventResult.ignored;
                   },
+                  child: TextField(
+                    controller: _controller,
+                    maxLines: null,
+                    keyboardType: TextInputType.multiline,
+                    textInputAction: TextInputAction.newline,
+                    style: const TextStyle(fontSize: 14),
+                    decoration: const InputDecoration(
+                      hintText: 'Ask your local AI a question or supply an image...',
+                    ),
+                    onSubmitted: (val) => handleSend(),
+                  ),
                 ),
               ),
               
@@ -2067,12 +2099,7 @@ class _ChatPlaygroundViewState extends State<ChatPlaygroundView> {
                   padding: const EdgeInsets.all(12),
                 ),
                 icon: const Icon(Icons.send_rounded, size: 20),
-                onPressed: () {
-                  if (_controller.text.trim().isNotEmpty || chat.selectedImageBytes != null) {
-                    chat.sendMessage(_controller.text);
-                    _controller.clear();
-                  }
-                },
+                onPressed: handleSend,
               ),
             ],
           ),
@@ -2669,5 +2696,414 @@ class _SettingsViewState extends State<SettingsView> {
 extension TextBuilder on TextStyle {
   Widget buildText(String text) {
     return Text(text, style: this);
+  }
+}
+
+// ============================================================================
+// FORMATTED MARKDOWN & CODE BLOCKS
+// ============================================================================
+
+class FormattedMessageView extends StatelessWidget {
+  final String text;
+  final bool isUser;
+  final Color? accentColor;
+
+  const FormattedMessageView({
+    super.key,
+    required this.text,
+    required this.isUser,
+    this.accentColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final List<Widget> children = [];
+    final RegExp codeBlockRegex = RegExp(r'```(\w*)\r?\n([\s\S]*?)(?:```|$)');
+    
+    int lastIndex = 0;
+    for (final match in codeBlockRegex.allMatches(text)) {
+      // Add preceding text segment
+      if (match.start > lastIndex) {
+        final textSegment = text.substring(lastIndex, match.start);
+        if (textSegment.isNotEmpty) {
+          children.add(_buildTextSegment(context, textSegment));
+        }
+      }
+      
+      // Add code block segment
+      final language = match.group(1) ?? '';
+      final code = match.group(2) ?? '';
+      children.add(_buildCodeBlock(context, language, code));
+      
+      lastIndex = match.end;
+    }
+    
+    // Add remaining text
+    if (lastIndex < text.length) {
+      final textSegment = text.substring(lastIndex);
+      if (textSegment.isNotEmpty) {
+        children.add(_buildTextSegment(context, textSegment));
+      }
+    }
+    
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: children,
+    );
+  }
+
+  Widget _buildTextSegment(BuildContext context, String text) {
+    final lines = text.split('\n');
+    final List<Widget> lineWidgets = [];
+
+    for (int i = 0; i < lines.length; i++) {
+      final line = lines[i];
+      final trimmedLine = line.trimLeft();
+      
+      // Header check
+      if (trimmedLine.startsWith('### ')) {
+        lineWidgets.add(Padding(
+          padding: const EdgeInsets.only(top: 10, bottom: 4),
+          child: Text.rich(
+            TextSpan(
+              children: _parseInlineMarkdown(trimmedLine.substring(4)),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.bold,
+                height: 1.3,
+              ),
+            ),
+          ),
+        ));
+      } else if (trimmedLine.startsWith('## ')) {
+        lineWidgets.add(Padding(
+          padding: const EdgeInsets.only(top: 14, bottom: 6),
+          child: Text.rich(
+            TextSpan(
+              children: _parseInlineMarkdown(trimmedLine.substring(3)),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 17,
+                fontWeight: FontWeight.bold,
+                height: 1.3,
+              ),
+            ),
+          ),
+        ));
+      } else if (trimmedLine.startsWith('# ')) {
+        lineWidgets.add(Padding(
+          padding: const EdgeInsets.only(top: 18, bottom: 8),
+          child: Text.rich(
+            TextSpan(
+              children: _parseInlineMarkdown(trimmedLine.substring(2)),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                height: 1.3,
+              ),
+            ),
+          ),
+        ));
+      } 
+      // Bullet list item check
+      else if (trimmedLine.startsWith('- ') || trimmedLine.startsWith('* ') || trimmedLine.startsWith('• ')) {
+        final content = trimmedLine.substring(2);
+        lineWidgets.add(Padding(
+          padding: const EdgeInsets.only(left: 12, top: 4, bottom: 4),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '• ',
+                style: TextStyle(
+                  color: isUser ? Colors.white : accentColor ?? AppColors.success,
+                  fontSize: 14.5,
+                  height: 1.45,
+                ),
+              ),
+              Expanded(
+                child: Text.rich(
+                  TextSpan(
+                    children: _parseInlineMarkdown(content),
+                    style: TextStyle(
+                      color: isUser ? Colors.white : AppColors.textPrimary,
+                      fontSize: 14.5,
+                      height: 1.45,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ));
+      }
+      // Numbered list item check
+      else if (RegExp(r'^\d+\.\s+').hasMatch(trimmedLine)) {
+        final match = RegExp(r'^(\d+\.\s+)').firstMatch(trimmedLine)!;
+        final prefix = match.group(1)!;
+        final content = trimmedLine.substring(prefix.length);
+        lineWidgets.add(Padding(
+          padding: const EdgeInsets.only(left: 12, top: 4, bottom: 4),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                prefix,
+                style: TextStyle(
+                  color: isUser ? Colors.white : accentColor ?? AppColors.success,
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.bold,
+                  height: 1.45,
+                ),
+              ),
+              Expanded(
+                child: Text.rich(
+                  TextSpan(
+                    children: _parseInlineMarkdown(content),
+                    style: TextStyle(
+                      color: isUser ? Colors.white : AppColors.textPrimary,
+                      fontSize: 14.5,
+                      height: 1.45,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ));
+      }
+      // Normal paragraph line
+      else {
+        if (line.isEmpty) {
+          if (i < lines.length - 1) {
+            lineWidgets.add(const SizedBox(height: 8));
+          }
+        } else {
+          lineWidgets.add(Padding(
+            padding: const EdgeInsets.symmetric(vertical: 2),
+            child: Text.rich(
+              TextSpan(
+                children: _parseInlineMarkdown(line),
+                style: TextStyle(
+                  color: isUser ? Colors.white : AppColors.textPrimary,
+                  fontSize: 14.5,
+                  height: 1.45,
+                ),
+              ),
+            ),
+          ));
+        }
+      }
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: lineWidgets,
+    );
+  }
+
+  List<InlineSpan> _parseInlineMarkdown(String text) {
+    final List<InlineSpan> spans = [];
+    final RegExp inlineRegex = RegExp(
+      r'(\*\*([^*]+)\*\*)|(\*([^*]+)\*)|(`([^`]+)`)|([^`*]+|[*`])',
+      multiLine: true,
+    );
+
+    final matches = inlineRegex.allMatches(text);
+    for (final match in matches) {
+      if (match.group(2) != null) {
+        // Bold: **text**
+        spans.add(TextSpan(
+          text: match.group(2),
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ));
+      } else if (match.group(4) != null) {
+        // Italic: *text*
+        spans.add(TextSpan(
+          text: match.group(4),
+          style: const TextStyle(fontStyle: FontStyle.italic),
+        ));
+      } else if (match.group(6) != null) {
+        // Inline code: `code`
+        spans.add(TextSpan(
+          text: match.group(6),
+          style: TextStyle(
+            fontFamily: 'Courier',
+            backgroundColor: isUser ? Colors.black.withOpacity(0.2) : Colors.white.withOpacity(0.08),
+            color: isUser ? Colors.white : accentColor ?? AppColors.success,
+            fontWeight: FontWeight.w500,
+          ),
+        ));
+      } else {
+        // Plain text or unmatched punctuation
+        spans.add(TextSpan(text: match.group(0)));
+      }
+    }
+    
+    if (spans.isEmpty && text.isNotEmpty) {
+      spans.add(TextSpan(text: text));
+    }
+    return spans;
+  }
+
+  Widget _buildCodeBlock(BuildContext context, String language, String code) {
+    final cleanCode = code.trimRight();
+    final displayLanguage = language.isNotEmpty ? language : 'code';
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 12),
+      width: double.infinity,
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E1E1E), // Premium dark editor background
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.white.withOpacity(0.1)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Header of Code Block: Language & Copy Button
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF2D2D2D),
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(10),
+                topRight: Radius.circular(10),
+              ),
+              border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  displayLanguage.toUpperCase(),
+                  style: const TextStyle(
+                    color: Color(0xFFCCCCCC),
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    fontFamily: 'Courier',
+                  ),
+                ),
+                _CopyButton(textToCopy: cleanCode),
+              ],
+            ),
+          ),
+          
+          // Code Display Area
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Text(
+                cleanCode,
+                style: const TextStyle(
+                  fontFamily: 'Courier',
+                  fontSize: 13,
+                  color: Color(0xFFD4D4D4),
+                  height: 1.4,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CopyButton extends StatefulWidget {
+  final String textToCopy;
+  const _CopyButton({required this.textToCopy});
+
+  @override
+  State<_CopyButton> createState() => _CopyButtonState();
+}
+
+class _CopyButtonState extends State<_CopyButton> {
+  bool _copied = false;
+
+  void _copy() {
+    Clipboard.setData(ClipboardData(text: widget.textToCopy));
+    setState(() => _copied = true);
+    Timer(const Duration(seconds: 2), () {
+      if (mounted) {
+        setState(() => _copied = false);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: _copy,
+      borderRadius: BorderRadius.circular(4),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              _copied ? Icons.check : Icons.copy_rounded,
+              size: 14,
+              color: _copied ? AppColors.success : const Color(0xFFCCCCCC),
+            ),
+            const SizedBox(width: 6),
+            Text(
+              _copied ? 'Copied' : 'Copy',
+              style: TextStyle(
+                color: _copied ? AppColors.success : const Color(0xFFCCCCCC),
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SmallCopyIconButton extends StatefulWidget {
+  final String textToCopy;
+  const _SmallCopyIconButton({required this.textToCopy});
+
+  @override
+  State<_SmallCopyIconButton> createState() => _SmallCopyIconButtonState();
+}
+
+class _SmallCopyIconButtonState extends State<_SmallCopyIconButton> {
+  bool _copied = false;
+
+  void _copy() {
+    Clipboard.setData(ClipboardData(text: widget.textToCopy));
+    setState(() => _copied = true);
+    Timer(const Duration(seconds: 2), () {
+      if (mounted) {
+        setState(() => _copied = false);
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: _copied ? 'Copied!' : 'Copy message',
+      child: InkWell(
+        onTap: _copy,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(6.0),
+          child: Icon(
+            _copied ? Icons.check_circle_outline : Icons.content_copy_rounded,
+            size: 14,
+            color: _copied ? AppColors.success : AppColors.textSecondary.withOpacity(0.7),
+          ),
+        ),
+      ),
+    );
   }
 }
