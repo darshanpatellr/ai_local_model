@@ -52,16 +52,18 @@ void main() async {
 // ============================================================================
 
 class AppColors {
-  static const Color background = Color(0xFF0B0F19);
-  static const Color sidebarBackground = Color(0xFF0F172A);
-  static const Color cardBackground = Color(0xFF1E293B);
-  static const Color border = Color(0xFF334155);
-  static const Color textPrimary = Color(0xFFF8FAFC);
-  static const Color textSecondary = Color(0xFF94A3B8);
-  static const Color success = Color(0xFF10B981);
-  static const Color warning = Color(0xFFF59E0B);
-  static const Color error = Color(0xFFEF4444);
-  static const Color thinking = Color(0xFF8B5CF6);
+  static bool isDarkMode = true;
+
+  static Color get background => isDarkMode ? const Color(0xFF0B0F19) : const Color(0xFFF8FAFC);
+  static Color get sidebarBackground => isDarkMode ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9);
+  static Color get cardBackground => isDarkMode ? const Color(0xFF1E293B) : const Color(0xFFFFFFFF);
+  static Color get border => isDarkMode ? const Color(0xFF334155) : const Color(0xFFE2E8F0);
+  static Color get textPrimary => isDarkMode ? const Color(0xFFF8FAFC) : const Color(0xFF0F172A);
+  static Color get textSecondary => isDarkMode ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+  static Color get success => const Color(0xFF10B981);
+  static Color get warning => const Color(0xFFF59E0B);
+  static Color get error => const Color(0xFFEF4444);
+  static Color get thinking => const Color(0xFF8B5CF6);
 
   // Dynamic Accents
   static const Map<String, Color> accents = {
@@ -74,6 +76,11 @@ class AppColors {
 }
 
 class AppTheme {
+  static ThemeData theme(Color accentColor, bool isDarkMode) {
+    AppColors.isDarkMode = isDarkMode;
+    return isDarkMode ? dark(accentColor) : light(accentColor);
+  }
+
   static ThemeData dark(Color accentColor) {
     return ThemeData.dark().copyWith(
       scaffoldBackgroundColor: AppColors.background,
@@ -92,7 +99,7 @@ class AppTheme {
         ),
         elevation: 0,
       ),
-      textTheme: const TextTheme(
+      textTheme: TextTheme(
         bodyLarge: TextStyle(color: AppColors.textPrimary, fontSize: 15, height: 1.5, fontFamily: 'Outfit'),
         bodyMedium: TextStyle(color: AppColors.textSecondary, fontSize: 13, fontFamily: 'Outfit'),
         titleMedium: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 16, fontFamily: 'Outfit'),
@@ -113,7 +120,51 @@ class AppTheme {
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: accentColor, width: 1.5),
         ),
-        hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 14),
+        hintStyle: TextStyle(color: AppColors.textSecondary, fontSize: 14),
+      ),
+    );
+  }
+
+  static ThemeData light(Color accentColor) {
+    return ThemeData.light().copyWith(
+      scaffoldBackgroundColor: AppColors.background,
+      colorScheme: ColorScheme.light(
+        primary: accentColor,
+        secondary: accentColor.withOpacity(0.8),
+        surface: AppColors.cardBackground,
+        background: AppColors.background,
+        error: AppColors.error,
+      ),
+      cardTheme: CardThemeData(
+        color: AppColors.cardBackground,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: AppColors.border.withOpacity(0.4), width: 1),
+        ),
+        elevation: 0,
+      ),
+      textTheme: TextTheme(
+        bodyLarge: TextStyle(color: AppColors.textPrimary, fontSize: 15, height: 1.5, fontFamily: 'Outfit'),
+        bodyMedium: TextStyle(color: AppColors.textSecondary, fontSize: 13, fontFamily: 'Outfit'),
+        titleMedium: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 16, fontFamily: 'Outfit'),
+        titleLarge: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.bold, fontSize: 20, letterSpacing: -0.5, fontFamily: 'Outfit'),
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: AppColors.background.withOpacity(0.5),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: AppColors.border.withOpacity(0.5)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: AppColors.border.withOpacity(0.3)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: accentColor, width: 1.5),
+        ),
+        hintStyle: TextStyle(color: AppColors.textSecondary, fontSize: 14),
       ),
     );
   }
@@ -197,11 +248,13 @@ class SettingsProvider extends ChangeNotifier {
   String _hfToken = '';
   PreferredBackend _backend = PreferredBackend.gpu;
   String _accentName = 'blue';
+  bool _isDarkMode = true;
 
   String get hfToken => _hfToken;
   PreferredBackend get backend => _backend;
   String get accentName => _accentName;
   Color get accentColor => AppColors.accents[_accentName] ?? AppColors.accents['blue']!;
+  bool get isDarkMode => _isDarkMode;
 
   SettingsProvider() {
     _loadSettings();
@@ -213,6 +266,7 @@ class SettingsProvider extends ChangeNotifier {
     final backendIndex = prefs.getInt('preferred_backend') ?? PreferredBackend.gpu.index;
     _backend = PreferredBackend.values[backendIndex];
     _accentName = prefs.getString('accent_color') ?? 'blue';
+    _isDarkMode = prefs.getBool('is_dark_mode') ?? true;
     notifyListeners();
   }
 
@@ -243,6 +297,13 @@ class SettingsProvider extends ChangeNotifier {
       await prefs.setString('accent_color', colorName);
       notifyListeners();
     }
+  }
+
+  Future<void> toggleThemeMode() async {
+    _isDarkMode = !_isDarkMode;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('is_dark_mode', _isDarkMode);
+    notifyListeners();
   }
 }
 
@@ -1097,7 +1158,7 @@ class MainAppWrapper extends StatelessWidget {
     return MaterialApp(
       title: 'DARSHAN AI',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.dark(settings.accentColor),
+      theme: AppTheme.theme(settings.accentColor, settings.isDarkMode),
       home: const MainLayoutScreen(),
     );
   }
@@ -1149,13 +1210,13 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                             child: Icon(Icons.blur_on_rounded, color: settings.accentColor, size: 28),
                           ),
                           const SizedBox(width: 12),
-                          const Text(
+                          Text(
                             'DARSHAN AI',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w900,
                               letterSpacing: 2,
-                              color: Colors.white,
+                              color: AppColors.textPrimary,
                             ),
                           ),
                         ],
@@ -1294,7 +1355,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                               const SizedBox(height: 6),
                               Text(
                                 'Args: ${jsonEncode(chatProvider.executingToolArgs)}',
-                                style: const TextStyle(fontFamily: 'Courier', color: AppColors.textSecondary, fontSize: 12),
+                                style: TextStyle(fontFamily: 'Courier', color: AppColors.textSecondary, fontSize: 12),
                               ),
                             ],
                           ),
@@ -1343,7 +1404,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                 Text(
                   title,
                   style: TextStyle(
-                    color: isSelected ? Colors.white : AppColors.textSecondary,
+                    color: isSelected ? AppColors.textPrimary : AppColors.textSecondary,
                     fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                     fontSize: 13.5,
                   ),
@@ -1489,13 +1550,13 @@ class ModelManagerView extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  const Text('Size: ~111 MB', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
+                  Text('Size: ~111 MB', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
                   const Spacer(),
                   if (isInstalled)
                     OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppColors.error,
-                        side: const BorderSide(color: AppColors.error),
+                        side: BorderSide(color: AppColors.error),
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       ),
                       onPressed: () => _confirmDelete(context, dm, 'gecko_64'),
@@ -1570,14 +1631,14 @@ class ModelManagerView extends StatelessWidget {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text('Size: ${model.sizeGB.toStringAsFixed(2)} GB', style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                  Text('Size: ${model.sizeGB.toStringAsFixed(2)} GB', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
                   Row(
                     children: [
                       if (isInstalled) ...[
                         OutlinedButton(
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.error,
-                            side: const BorderSide(color: AppColors.error),
+                            side: BorderSide(color: AppColors.error),
                             padding: const EdgeInsets.symmetric(horizontal: 12),
                           ),
                           onPressed: () => _confirmDelete(context, dm, model.id),
@@ -1631,7 +1692,7 @@ class ModelManagerView extends StatelessWidget {
             IconButton(
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
-              icon: const Icon(Icons.cancel_rounded, color: AppColors.error, size: 18),
+              icon: Icon(Icons.cancel_rounded, color: AppColors.error, size: 18),
               onPressed: () => dm.cancelDownload(modelId),
             ),
           ],
@@ -1650,8 +1711,8 @@ class ModelManagerView extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text('Speed: ${dState.speedMBs.toStringAsFixed(1)} MB/s', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-            Text('ETA: ${dState.eta}', style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+            Text('Speed: ${dState.speedMBs.toStringAsFixed(1)} MB/s', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+            Text('ETA: ${dState.eta}', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
           ],
         ),
       ],
@@ -1678,12 +1739,12 @@ class ModelManagerView extends StatelessWidget {
       margin: const EdgeInsets.only(right: 6, top: 4),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.06),
+        color: AppColors.textPrimary.withOpacity(0.05),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
         label,
-        style: const TextStyle(fontSize: 9.5, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+        style: TextStyle(fontSize: 9.5, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
       ),
     );
   }
@@ -1698,11 +1759,11 @@ class ModelManagerView extends StatelessWidget {
           content: const Text('This will delete all downloaded model weights on disk. You can download them again later.'),
           actions: [
             TextButton(
-              child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
+              child: Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
               onPressed: () => Navigator.of(context).pop(),
             ),
             TextButton(
-              child: const Text('Delete', style: TextStyle(color: AppColors.error)),
+              child: Text('Delete', style: TextStyle(color: AppColors.error)),
               onPressed: () {
                 dm.deleteModelFiles(modelId);
                 Navigator.of(context).pop();
@@ -1761,7 +1822,7 @@ class _ChatPlaygroundViewState extends State<ChatPlaygroundView> {
             const SizedBox(height: 20),
             const Text('No model is active.', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            const Text('Head to the Model Manager to download and load a model.', style: TextStyle(color: AppColors.textSecondary)),
+            Text('Head to the Model Manager to download and load a model.', style: TextStyle(color: AppColors.textSecondary)),
           ],
         ),
       );
@@ -1797,7 +1858,7 @@ class _ChatPlaygroundViewState extends State<ChatPlaygroundView> {
             ),
           ),
           
-          const Divider(color: AppColors.border, height: 1),
+          Divider(color: AppColors.border, height: 1),
 
           // Message Stream Area
           Expanded(
@@ -1844,7 +1905,7 @@ class _ChatPlaygroundViewState extends State<ChatPlaygroundView> {
               children: [
                 Icon(_getSystemIcon(msg.toolName), size: 14, color: settings.accentColor),
                 const SizedBox(width: 8),
-                Text(msg.text, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, fontFamily: 'Courier')),
+                Text(msg.text, style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontFamily: 'Courier')),
               ],
             ),
           ),
@@ -1972,7 +2033,7 @@ class _ChatPlaygroundViewState extends State<ChatPlaygroundView> {
             CircleAvatar(
               backgroundColor: AppColors.border,
               radius: 16,
-              child: const Icon(Icons.person, color: Colors.white, size: 18),
+              child: Icon(Icons.person, color: AppColors.textPrimary, size: 18),
             ),
           ],
         ],
@@ -2039,7 +2100,7 @@ class _ChatPlaygroundViewState extends State<ChatPlaygroundView> {
                     const Text('Image Attachment Ready', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
                     const SizedBox(width: 10),
                     IconButton(
-                      icon: const Icon(Icons.close, size: 16, color: AppColors.error),
+                      icon: Icon(Icons.close, size: 16, color: AppColors.error),
                       onPressed: chat.clearSelectedImage,
                       padding: EdgeInsets.zero,
                       constraints: const BoxConstraints(),
@@ -2152,7 +2213,7 @@ class _RAGViewState extends State<RAGView> {
               const SizedBox(height: 20),
               const Text('Embedder Model Required', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
-              const Text(
+               Text(
                 'RAG relies on Gecko 64 to encode text. Please download the Gecko embedder in the Model Manager.',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: AppColors.textSecondary),
@@ -2249,7 +2310,7 @@ class _RAGViewState extends State<RAGView> {
                       const SizedBox(height: 16),
                       Row(
                         children: [
-                          const Text('Category Tag: ', style: TextStyle(color: AppColors.textSecondary)),
+                          Text('Category Tag: ', style: TextStyle(color: AppColors.textSecondary)),
                           const SizedBox(width: 10),
                           DropdownButton<String>(
                             value: _selectedCategory,
@@ -2369,7 +2430,7 @@ class _RAGViewState extends State<RAGView> {
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(color: AppColors.border.withOpacity(0.3)),
                           ),
-                          child: const Center(
+                          child: Center(
                             child: Text('No matching records. Run a search to test.', style: TextStyle(color: AppColors.textSecondary)),
                           ),
                         )
@@ -2411,11 +2472,11 @@ class _RAGViewState extends State<RAGView> {
                                     const SizedBox(height: 10),
                                     Row(
                                       children: [
-                                        const Icon(Icons.query_stats_rounded, size: 14, color: AppColors.success),
+                                        Icon(Icons.query_stats_rounded, size: 14, color: AppColors.success),
                                         const SizedBox(width: 6),
                                         Text(
                                           'Cosine Similarity: ${(result.similarity * 100).toStringAsFixed(1)}%',
-                                          style: const TextStyle(fontSize: 11, color: AppColors.success, fontWeight: FontWeight.bold),
+                                          style: TextStyle(color: AppColors.success, fontSize: 11, fontWeight: FontWeight.bold),
                                         ),
                                       ],
                                     ),
@@ -2452,7 +2513,7 @@ class _RAGViewState extends State<RAGView> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label, style: const TextStyle(color: AppColors.textSecondary, fontSize: 12)),
+                Text(label, style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
                 const SizedBox(height: 4),
                 Text(value, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               ],
@@ -2473,11 +2534,11 @@ class _RAGViewState extends State<RAGView> {
           content: const Text('Are you sure you want to clear all documents inside the vector store?'),
           actions: [
             TextButton(
-              child: const Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
+              child: Text('Cancel', style: TextStyle(color: AppColors.textSecondary)),
               onPressed: () => Navigator.of(context).pop(),
             ),
             TextButton(
-              child: const Text('Purge', style: TextStyle(color: AppColors.error)),
+              child: Text('Purge', style: TextStyle(color: AppColors.error)),
               onPressed: () {
                 rag.clearDatabase();
                 Navigator.of(context).pop();
@@ -2529,7 +2590,7 @@ class _SettingsViewState extends State<SettingsView> {
             // HuggingFace Token Config
             const Text('HuggingFace Access Token', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             const SizedBox(height: 10),
-            const Text(
+            Text(
               'Required to verify credentials when downloading gated model repositories (e.g. Gemma 4). Your token is saved securely in your macOS application preferences.',
               style: TextStyle(color: AppColors.textSecondary),
             ),
@@ -2573,7 +2634,7 @@ class _SettingsViewState extends State<SettingsView> {
             // Hardware Backend Preference
             const Text('Preferred Hardware Acceleration', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             const SizedBox(height: 10),
-            const Text(
+            Text(
               'Select Metal GPU for fast parallel tensor computations, or fallback to CPU if GPU memory is constrained.',
               style: TextStyle(color: AppColors.textSecondary),
             ),
@@ -2583,6 +2644,24 @@ class _SettingsViewState extends State<SettingsView> {
                 _buildRadioTile('Metal GPU (Recommended)', PreferredBackend.gpu, settings),
                 const SizedBox(width: 20),
                 _buildRadioTile('Standard CPU', PreferredBackend.cpu, settings),
+              ],
+            ),
+            
+            const SizedBox(height: 40),
+
+            // Theme Mode
+            const Text('App Theme Mode', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            const SizedBox(height: 10),
+            Text(
+              'Switch between Light Mode and Dark Mode for the application workspace.',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                _buildThemeTile('Dark Mode', Icons.dark_mode_rounded, true, settings),
+                const SizedBox(width: 20),
+                _buildThemeTile('Light Mode', Icons.light_mode_rounded, false, settings),
               ],
             ),
             
@@ -2619,7 +2698,7 @@ class _SettingsViewState extends State<SettingsView> {
             ),
             
             const SizedBox(height: 48),
-            const Divider(color: AppColors.border),
+            Divider(color: AppColors.border),
             const SizedBox(height: 24),
             
             // Disk cleanup stats
@@ -2679,7 +2758,46 @@ class _SettingsViewState extends State<SettingsView> {
               label,
               style: TextStyle(
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                color: isSelected ? Colors.white : AppColors.textSecondary,
+                color: isSelected ? AppColors.textPrimary : AppColors.textSecondary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildThemeTile(String label, IconData icon, bool targetDarkMode, SettingsProvider settings) {
+    final isSelected = settings.isDarkMode == targetDarkMode;
+    return GestureDetector(
+      onTap: () {
+        if (settings.isDarkMode != targetDarkMode) {
+          settings.toggleThemeMode();
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        decoration: BoxDecoration(
+          color: isSelected ? settings.accentColor.withOpacity(0.08) : AppColors.cardBackground,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected ? settings.accentColor : AppColors.border.withOpacity(0.4),
+            width: isSelected ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              icon,
+              color: isSelected ? settings.accentColor : AppColors.textSecondary,
+              size: 20,
+            ),
+            const SizedBox(width: 12),
+            Text(
+              label,
+              style: TextStyle(
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                color: isSelected ? AppColors.textPrimary : AppColors.textSecondary,
               ),
             ),
           ],
@@ -2768,8 +2886,8 @@ class FormattedMessageView extends StatelessWidget {
           child: Text.rich(
             TextSpan(
               children: _parseInlineMarkdown(trimmedLine.substring(4)),
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: isUser ? Colors.white : AppColors.textPrimary,
                 fontSize: 15,
                 fontWeight: FontWeight.bold,
                 height: 1.3,
@@ -2783,8 +2901,8 @@ class FormattedMessageView extends StatelessWidget {
           child: Text.rich(
             TextSpan(
               children: _parseInlineMarkdown(trimmedLine.substring(3)),
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: isUser ? Colors.white : AppColors.textPrimary,
                 fontSize: 17,
                 fontWeight: FontWeight.bold,
                 height: 1.3,
@@ -2798,8 +2916,8 @@ class FormattedMessageView extends StatelessWidget {
           child: Text.rich(
             TextSpan(
               children: _parseInlineMarkdown(trimmedLine.substring(2)),
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: isUser ? Colors.white : AppColors.textPrimary,
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
                 height: 1.3,
