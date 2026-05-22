@@ -73,6 +73,16 @@ class AppColors {
     'amber': Color(0xFFF59E0B),
     'red': Color(0xFFEF4444),
   };
+
+  static Color getReadableAccent(Color color) {
+    if (isDarkMode) return color;
+    if (color.value == const Color(0xFFD946EF).value) return const Color(0xFF9D178D);
+    if (color.value == const Color(0xFF3B82F6).value) return const Color(0xFF1D4ED8);
+    if (color.value == const Color(0xFF10B981).value) return const Color(0xFF047857);
+    if (color.value == const Color(0xFFF59E0B).value) return const Color(0xFFB45309);
+    if (color.value == const Color(0xFFEF4444).value) return const Color(0xFFB91C1C);
+    return color;
+  }
 }
 
 class AppTheme {
@@ -3027,7 +3037,7 @@ class FormattedMessageView extends StatelessWidget {
   List<InlineSpan> _parseInlineMarkdown(String text) {
     final List<InlineSpan> spans = [];
     final RegExp inlineRegex = RegExp(
-      r'(\*\*([^*]+)\*\*)|(\*([^*]+)\*)|(`([^`]+)`)|([^`*]+|[*`])',
+      r'(\*\*([^*]+)\*\*)|(\*([^*]+)\*)|((`{1,2})([^`]+)\6)|([^`*]+|[*`])',
       multiLine: true,
     );
 
@@ -3036,24 +3046,28 @@ class FormattedMessageView extends StatelessWidget {
       if (match.group(2) != null) {
         // Bold: **text**
         spans.add(TextSpan(
-          text: match.group(2),
+          children: _parseInlineMarkdown(match.group(2)!),
           style: const TextStyle(fontWeight: FontWeight.bold),
         ));
       } else if (match.group(4) != null) {
         // Italic: *text*
         spans.add(TextSpan(
-          text: match.group(4),
+          children: _parseInlineMarkdown(match.group(4)!),
           style: const TextStyle(fontStyle: FontStyle.italic),
         ));
-      } else if (match.group(6) != null) {
-        // Inline code: `code`
+      } else if (match.group(7) != null) {
+        // Inline code: `code` or ``code``
         spans.add(TextSpan(
-          text: match.group(6),
+          text: '\u2009${match.group(7)}\u2009',
           style: TextStyle(
             fontFamily: 'Courier',
-            backgroundColor: isUser ? Colors.black.withOpacity(0.2) : Colors.white.withOpacity(0.08),
-            color: isUser ? Colors.white : accentColor ?? AppColors.success,
-            fontWeight: FontWeight.w500,
+            backgroundColor: isUser 
+                ? Colors.black.withOpacity(0.25) 
+                : AppColors.textPrimary.withOpacity(0.08),
+            color: isUser 
+                ? Colors.white 
+                : AppColors.getReadableAccent(accentColor ?? AppColors.success),
+            fontWeight: FontWeight.w600,
           ),
         ));
       } else {
