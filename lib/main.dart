@@ -696,7 +696,7 @@ class ChatPlaygroundProvider extends ChangeNotifier {
         modelType: modelInfo.modelType,
         isThinking: modelInfo.supportThinking,
         tools: tools,
-        systemInstruction: "You are a helpful local assistant named Darshan AI, running entirely offline on macOS using flutter_gemma and Metal acceleration.",
+        systemInstruction: "You are a helpful local assistant named Offline AI, running entirely offline on macOS using flutter_gemma and Metal acceleration.",
       );
 
       _activeModelInfo = modelInfo;
@@ -1166,7 +1166,7 @@ class MainAppWrapper extends StatelessWidget {
   Widget build(BuildContext context) {
     final settings = MultiProvider.of<SettingsProvider>(context);
     return MaterialApp(
-      title: 'DARSHAN AI',
+      title: 'OFFLINE AI',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.theme(settings.accentColor, settings.isDarkMode),
       home: const MainLayoutScreen(),
@@ -1221,7 +1221,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                           ),
                           const SizedBox(width: 12),
                           Text(
-                            'DARSHAN AI',
+                            'OFFLINE AI',
                             style: TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w900,
