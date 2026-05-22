@@ -1277,9 +1277,9 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                     const SizedBox(height: 20),
                     
                     // Sidebar Navigation Links
-                    _buildNavItem(NavigationTab.models, Icons.developer_board_rounded, 'Model Manager'),
-                    _buildNavItem(NavigationTab.chat, Icons.forum_rounded, 'AI Chat Playground'),
-                    _buildNavItem(NavigationTab.rag, Icons.menu_book_rounded, 'Vector Knowledge'),
+                    _buildNavItem(NavigationTab.chat, Icons.forum_rounded, 'AI Chat'),
+                    _buildNavItem(NavigationTab.models, Icons.developer_board_rounded, 'Model'),
+                    // _buildNavItem(NavigationTab.rag, Icons.menu_book_rounded, 'Vector Knowledge'),
                     _buildNavItem(NavigationTab.settings, Icons.settings_suggest_rounded, 'Settings'),
                     
                     const Spacer(),
