@@ -259,12 +259,14 @@ class SettingsProvider extends ChangeNotifier {
   PreferredBackend _backend = PreferredBackend.gpu;
   String _accentName = 'blue';
   bool _isDarkMode = true;
+  double _temperature = 0.2;
 
   String get hfToken => _hfToken;
   PreferredBackend get backend => _backend;
   String get accentName => _accentName;
   Color get accentColor => AppColors.accents[_accentName] ?? AppColors.accents['blue']!;
   bool get isDarkMode => _isDarkMode;
+  double get temperature => _temperature;
 
   SettingsProvider() {
     _loadSettings();
@@ -277,6 +279,7 @@ class SettingsProvider extends ChangeNotifier {
     _backend = PreferredBackend.values[backendIndex];
     _accentName = prefs.getString('accent_color') ?? 'blue';
     _isDarkMode = prefs.getBool('is_dark_mode') ?? true;
+    _temperature = prefs.getDouble('model_temperature') ?? 0.2;
     notifyListeners();
   }
 
@@ -313,6 +316,13 @@ class SettingsProvider extends ChangeNotifier {
     _isDarkMode = !_isDarkMode;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('is_dark_mode', _isDarkMode);
+    notifyListeners();
+  }
+
+  Future<void> setTemperature(double temp) async {
+    _temperature = temp;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble('model_temperature', temp);
     notifyListeners();
   }
 }
@@ -692,6 +702,7 @@ class ChatPlaygroundProvider extends ChangeNotifier {
 
       // Step 4: Create chat session
       _activeChat = await _activeModel!.createChat(
+        temperature: _settings.temperature,
         supportsFunctionCalls: modelInfo.supportFunctionCalling,
         modelType: modelInfo.modelType,
         isThinking: modelInfo.supportThinking,
@@ -842,6 +853,14 @@ class ChatPlaygroundProvider extends ChangeNotifier {
 
     _isCurrentlyThinking = false;
     _isStreaming = false;
+    
+    if (answerBuffer.isEmpty && !addedBotMessage && finalResponseEvent is! FunctionCallResponse && finalResponseEvent is! ParallelFunctionCallResponse) {
+      _messages.add(Message.systemInfo(
+        text: 'Warning: Empty response from model. Try switching to CPU acceleration or lowering model temperature in Settings.',
+        icon: 'error_outline',
+      ));
+    }
+    
     notifyListeners();
     debugPrint('=== [Gemma Demo] _generateResponseLoop finished ===');
 
@@ -1851,7 +1870,12 @@ class _ChatPlaygroundViewState extends State<ChatPlaygroundView> {
                   children: [
                     Text(chat.activeModelInfo!.name, style: Theme.of(context).textTheme.titleLarge),
                     const SizedBox(height: 4),
-                    const Text('Secure, local conversation pipeline accelerated via Metal (GPU)'),
+                    Text(
+                      settings.backend == PreferredBackend.gpu
+                          ? 'Secure, local conversation pipeline accelerated via Metal (GPU)'
+                          : 'Secure, local conversation pipeline running on Standard CPU (Highly Stable)',
+                      style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                    ),
                   ],
                 ),
                 const Spacer(),
@@ -2654,6 +2678,48 @@ class _SettingsViewState extends State<SettingsView> {
                 _buildRadioTile('Metal GPU (Recommended)', PreferredBackend.gpu, settings),
                 const SizedBox(width: 20),
                 _buildRadioTile('Standard CPU', PreferredBackend.cpu, settings),
+              ],
+            ),
+            
+            const SizedBox(height: 40),
+            
+            // Model Temperature (Stochasticity) slider
+            const Text('Model Temperature', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            const SizedBox(height: 10),
+            Text(
+              'Controls randomness: lower values (e.g. 0.1 - 0.3) make responses more stable, deterministic, and prevent gibberish. Higher values make them more creative but prone to hallucination.',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: Slider(
+                    value: settings.temperature,
+                    min: 0.0,
+                    max: 1.0,
+                    divisions: 10,
+                    activeColor: settings.accentColor,
+                    inactiveColor: settings.accentColor.withOpacity(0.2),
+                    label: settings.temperature.toStringAsFixed(1),
+                    onChanged: (val) => settings.setTemperature(val),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Container(
+                  width: 50,
+                  alignment: Alignment.center,
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: AppColors.cardBackground,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.border.withOpacity(0.4)),
+                  ),
+                  child: Text(
+                    settings.temperature.toStringAsFixed(1),
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                  ),
+                ),
               ],
             ),
             
