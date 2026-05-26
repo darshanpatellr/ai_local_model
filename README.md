@@ -30,12 +30,12 @@
 
 The app includes a pre-configured registry for the following optimized models:
 
-| Model Name | Type | Size | Features |
-| :--- | :--- | :--- | :--- |
-| **Qwen3 0.6B** | Text | ~580 MB | Ultra-lightweight, Reasoning |
-| **Gemma 4 E2B IT** | Multimodal | ~2.40 GB | Vision, Advanced Reasoning |
-| **Qwen 2.5 1.5B** | Text | ~1.60 GB | Structured Tool Calling, Code |
-| **Gecko 110M** | Embedding | ~111 MB | Semantic Search (RAG) |
+| No. | Model Name          | Type       | Size     | Features                      |
+|:----|:--------------------|:-----------|:---------|:------------------------------|
+| 1   | **Qwen3 0.6B**      | Text       | ~580 MB  | Ultra-lightweight, Reasoning  |
+| 2   | **Gemma 4 E2B IT**  | Multimodal | ~2.40 GB | Vision, Advanced Reasoning    |
+| 3   | **Qwen 2.5 1.5B**   | Text       | ~1.60 GB | Structured Tool Calling, Code |
+| 4   | **Gecko 110M**      | Embedding  | ~111 MB  | Semantic Search (RAG)         |
 
 ---
 
