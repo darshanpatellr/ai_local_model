@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_gemma/flutter_gemma.dart';
@@ -77,11 +76,11 @@ class AppColors {
 
   static Color getReadableAccent(Color color) {
     if (isDarkMode) return color;
-    if (color.value == const Color(0xFFD946EF).value) return const Color(0xFF9D178D);
-    if (color.value == const Color(0xFF3B82F6).value) return const Color(0xFF1D4ED8);
-    if (color.value == const Color(0xFF10B981).value) return const Color(0xFF047857);
-    if (color.value == const Color(0xFFF59E0B).value) return const Color(0xFFB45309);
-    if (color.value == const Color(0xFFEF4444).value) return const Color(0xFFB91C1C);
+    if (color == const Color(0xFFD946EF)) return const Color(0xFF9D178D);
+    if (color == const Color(0xFF3B82F6)) return const Color(0xFF1D4ED8);
+    if (color == const Color(0xFF10B981)) return const Color(0xFF047857);
+    if (color == const Color(0xFFF59E0B)) return const Color(0xFFB45309);
+    if (color == const Color(0xFFEF4444)) return const Color(0xFFB91C1C);
     return color;
   }
 }
@@ -97,16 +96,15 @@ class AppTheme {
       scaffoldBackgroundColor: AppColors.background,
       colorScheme: ColorScheme.dark(
         primary: accentColor,
-        secondary: accentColor.withOpacity(0.8),
+        secondary: accentColor.withValues(alpha:0.8),
         surface: AppColors.cardBackground,
-        background: AppColors.background,
         error: AppColors.error,
       ),
       cardTheme: CardThemeData(
         color: AppColors.cardBackground,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: AppColors.border.withOpacity(0.4), width: 1),
+          side: BorderSide(color: AppColors.border.withValues(alpha:0.4), width: 1),
         ),
         elevation: 0,
       ),
@@ -118,14 +116,14 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AppColors.background.withOpacity(0.5),
+        fillColor: AppColors.background.withValues(alpha:0.5),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.border.withOpacity(0.5)),
+          borderSide: BorderSide(color: AppColors.border.withValues(alpha:0.5)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.border.withOpacity(0.3)),
+          borderSide: BorderSide(color: AppColors.border.withValues(alpha:0.3)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -141,16 +139,15 @@ class AppTheme {
       scaffoldBackgroundColor: AppColors.background,
       colorScheme: ColorScheme.light(
         primary: accentColor,
-        secondary: accentColor.withOpacity(0.8),
+        secondary: accentColor.withValues(alpha:0.8),
         surface: AppColors.cardBackground,
-        background: AppColors.background,
         error: AppColors.error,
       ),
       cardTheme: CardThemeData(
         color: AppColors.cardBackground,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: AppColors.border.withOpacity(0.4), width: 1),
+          side: BorderSide(color: AppColors.border.withValues(alpha:0.4), width: 1),
         ),
         elevation: 0,
       ),
@@ -162,14 +159,14 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: AppColors.background.withOpacity(0.5),
+        fillColor: AppColors.background.withValues(alpha:0.5),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.border.withOpacity(0.5)),
+          borderSide: BorderSide(color: AppColors.border.withValues(alpha:0.5)),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: AppColors.border.withOpacity(0.3)),
+          borderSide: BorderSide(color: AppColors.border.withValues(alpha:0.3)),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
@@ -370,8 +367,8 @@ class DownloadState {
 
 class ModelDownloadManager extends ChangeNotifier {
   final SettingsProvider _settings;
-  Map<String, bool> _installedModels = {};
-  Map<String, DownloadState> _downloads = {};
+  final Map<String, bool> _installedModels = {};
+  final Map<String, DownloadState> _downloads = {};
   bool _isCleaning = false;
 
   Map<String, bool> get installedModels => _installedModels;
@@ -622,8 +619,9 @@ class ModelDownloadManager extends ChangeNotifier {
 
 class ChatPlaygroundProvider extends ChangeNotifier {
   final SettingsProvider _settings;
+  // ignore: unused_field
   final ModelDownloadManager _downloadManager;
-  
+
   InferenceModel? _activeModel;
   InferenceChat? _activeChat;
   AppModelInfo? _activeModelInfo;
@@ -1285,10 +1283,10 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: settings.accentColor.withOpacity(0.15),
+                          color: settings.accentColor.withValues(alpha:0.15),
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: Icon(Icons.blur_on_rounded, color: settings.accentColor, size: 28),
+                        child: Icon(Icons.auto_awesome_rounded, color: settings.accentColor, size: 28),
                       ),
                       const SizedBox(width: 12),
                       Text(
@@ -1310,9 +1308,9 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                   child: Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: AppColors.cardBackground.withOpacity(0.4),
+                      color: AppColors.cardBackground.withValues(alpha:0.4),
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: AppColors.border.withOpacity(0.3)),
+                      border: Border.all(color: AppColors.border.withValues(alpha:0.3)),
                     ),
                     child: Row(
                       children: [
@@ -1324,7 +1322,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                             color: chatProvider.activeModelInfo != null ? AppColors.success : AppColors.textSecondary,
                             boxShadow: chatProvider.activeModelInfo != null ? [
                               BoxShadow(
-                                color: AppColors.success.withOpacity(0.4),
+                                color: AppColors.success.withValues(alpha:0.4),
                                 blurRadius: 6,
                                 spreadRadius: 2,
                               )
@@ -1360,11 +1358,11 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                   padding: const EdgeInsets.all(24.0),
                   child: Row(
                     children: [
-                      Icon(Icons.apple, color: AppColors.textSecondary.withOpacity(0.7), size: 20),
+                      Icon(Icons.apple, color: AppColors.textSecondary.withValues(alpha:0.7), size: 20),
                       const SizedBox(width: 8),
                       Text(
                         'macOS Apple Silicon',
-                        style: TextStyle(fontSize: 11, color: AppColors.textSecondary.withOpacity(0.7)),
+                        style: TextStyle(fontSize: 11, color: AppColors.textSecondary.withValues(alpha:0.7)),
                       ),
                     ],
                   ),
@@ -1392,7 +1390,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
           if (chatProvider.showToolOverlay)
             Positioned.fill(
               child: Container(
-                color: Colors.black.withOpacity(0.6),
+                color: Colors.black.withValues(alpha:0.6),
                 child: Center(
                   child: Container(
                     constraints: const BoxConstraints(maxWidth: 380),
@@ -1401,10 +1399,10 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                     decoration: BoxDecoration(
                       color: AppColors.cardBackground,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: settings.accentColor.withOpacity(0.4), width: 1.5),
+                      border: Border.all(color: settings.accentColor.withValues(alpha:0.4), width: 1.5),
                       boxShadow: [
                         BoxShadow(
-                          color: settings.accentColor.withOpacity(0.2),
+                          color: settings.accentColor.withValues(alpha:0.2),
                           blurRadius: 20,
                           spreadRadius: 5,
                         ),
@@ -1428,9 +1426,9 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                           width: double.infinity,
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.black.withOpacity(0.3),
+                            color: Colors.black.withValues(alpha:0.3),
                             borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: AppColors.border.withOpacity(0.4)),
+                            border: Border.all(color: AppColors.border.withValues(alpha:0.4)),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1464,7 +1462,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
       bottomNavigationBar: isAndroid
           ? Container(
               decoration: BoxDecoration(
-                border: Border(top: BorderSide(color: AppColors.border.withOpacity(0.15), width: 1)),
+                border: Border(top: BorderSide(color: AppColors.border.withValues(alpha:0.15), width: 1)),
               ),
               child: BottomNavigationBar(
                 backgroundColor: AppColors.sidebarBackground,
@@ -1517,7 +1515,7 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
             decoration: BoxDecoration(
-              color: isSelected ? settings.accentColor.withOpacity(0.12) : Colors.transparent,
+              color: isSelected ? settings.accentColor.withValues(alpha:0.12) : Colors.transparent,
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
@@ -1651,7 +1649,7 @@ class ModelManagerView extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: settings.accentColor.withOpacity(0.1),
+                    color: settings.accentColor.withValues(alpha:0.1),
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Icon(Icons.hub, color: settings.accentColor, size: 24),
@@ -1865,9 +1863,9 @@ class ModelManagerView extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.12),
+        color: color.withValues(alpha:0.12),
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: color.withOpacity(0.4)),
+        border: Border.all(color: color.withValues(alpha:0.4)),
       ),
       child: Text(
         label,
@@ -1881,7 +1879,7 @@ class ModelManagerView extends StatelessWidget {
       margin: const EdgeInsets.only(right: 6, top: 4),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
-        color: AppColors.textPrimary.withOpacity(0.05),
+        color: AppColors.textPrimary.withValues(alpha:0.05),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Text(
@@ -1961,7 +1959,7 @@ class _ChatPlaygroundViewState extends State<ChatPlaygroundView> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.chat_bubble_outline_rounded, size: 64, color: settings.accentColor.withOpacity(0.4)),
+            Icon(Icons.chat_bubble_outline_rounded, size: 64, color: settings.accentColor.withValues(alpha:0.4)),
             const SizedBox(height: 20),
             const Text('No model is active.', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
@@ -2034,7 +2032,7 @@ class _ChatPlaygroundViewState extends State<ChatPlaygroundView> {
                       OutlinedButton.icon(
                         style: OutlinedButton.styleFrom(
                           foregroundColor: AppColors.textSecondary,
-                          side: BorderSide(color: AppColors.border.withOpacity(0.5)),
+                          side: BorderSide(color: AppColors.border.withValues(alpha:0.5)),
                         ),
                         onPressed: () => chat.clearHistory(),
                         icon: const Icon(Icons.delete_sweep_rounded, size: 16),
@@ -2082,9 +2080,9 @@ class _ChatPlaygroundViewState extends State<ChatPlaygroundView> {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             decoration: BoxDecoration(
-              color: AppColors.cardBackground.withOpacity(0.5),
+              color: AppColors.cardBackground.withValues(alpha:0.5),
               borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AppColors.border.withOpacity(0.3)),
+              border: Border.all(color: AppColors.border.withValues(alpha:0.3)),
             ),
             child: Row(
               children: [
@@ -2104,9 +2102,9 @@ class _ChatPlaygroundViewState extends State<ChatPlaygroundView> {
         child: Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AppColors.thinking.withOpacity(0.08),
+            color: AppColors.thinking.withValues(alpha:0.08),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.thinking.withOpacity(0.2)),
+            border: Border.all(color: AppColors.thinking.withValues(alpha:0.2)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -2124,7 +2122,7 @@ class _ChatPlaygroundViewState extends State<ChatPlaygroundView> {
                 style: TextStyle(
                   fontFamily: 'Courier',
                   fontSize: 12,
-                  color: AppColors.textPrimary.withOpacity(0.8),
+                  color: AppColors.textPrimary.withValues(alpha:0.8),
                   height: 1.5,
                 ),
               ),
@@ -2143,9 +2141,9 @@ class _ChatPlaygroundViewState extends State<ChatPlaygroundView> {
         children: [
           if (!isUser) ...[
             CircleAvatar(
-              backgroundColor: settings.accentColor.withOpacity(0.15),
+              backgroundColor: settings.accentColor.withValues(alpha:0.15),
               radius: 16,
-              child: Icon(Icons.blur_on_rounded, color: settings.accentColor, size: 18),
+              child: Icon(Icons.auto_awesome_rounded, color: settings.accentColor, size: 18),
             ),
             const SizedBox(width: 14),
           ],
@@ -2166,7 +2164,7 @@ class _ChatPlaygroundViewState extends State<ChatPlaygroundView> {
                         bottomLeft: isUser ? const Radius.circular(16) : Radius.zero,
                         bottomRight: isUser ? Radius.zero : const Radius.circular(16),
                       ),
-                      border: isUser ? null : Border.all(color: AppColors.border.withOpacity(0.4)),
+                      border: isUser ? null : Border.all(color: AppColors.border.withValues(alpha:0.4)),
                     ),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2258,7 +2256,7 @@ class _ChatPlaygroundViewState extends State<ChatPlaygroundView> {
       ),
       decoration: BoxDecoration(
         color: AppColors.background,
-        border: Border.all(color: AppColors.border.withOpacity(0.3)),
+        border: Border.all(color: AppColors.border.withValues(alpha:0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -2272,7 +2270,7 @@ class _ChatPlaygroundViewState extends State<ChatPlaygroundView> {
                 decoration: BoxDecoration(
                   color: AppColors.cardBackground,
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.border.withOpacity(0.5)),
+                  border: Border.all(color: AppColors.border.withValues(alpha:0.5)),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -2399,7 +2397,7 @@ class _RAGViewState extends State<RAGView> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(Icons.sd_card_alert_rounded, size: 64, color: settings.accentColor.withOpacity(0.4)),
+              Icon(Icons.sd_card_alert_rounded, size: 64, color: settings.accentColor.withValues(alpha:0.4)),
               const SizedBox(height: 20),
               const Text('Embedder Model Required', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
@@ -2456,7 +2454,7 @@ class _RAGViewState extends State<RAGView> {
                 OutlinedButton.icon(
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.error,
-                    side: BorderSide(color: AppColors.error.withOpacity(0.5)),
+                    side: BorderSide(color: AppColors.error.withValues(alpha:0.5)),
                   ),
                   onPressed: () => _confirmClear(context, rag),
                   icon: const Icon(Icons.delete_forever_rounded, size: 16),
@@ -2539,6 +2537,8 @@ class _RAGViewState extends State<RAGView> {
                             _contentController.clear();
                             // Generate new ID
                             _idController.text = 'doc_${DateTime.now().millisecondsSinceEpoch.toString().substring(8)}';
+                            if (!mounted) return;
+                            // ignore: use_build_context_synchronously
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(content: Text('Document ingested successfully!')),
                             );
@@ -2616,9 +2616,9 @@ class _RAGViewState extends State<RAGView> {
                           width: double.infinity,
                           padding: const EdgeInsets.all(24),
                           decoration: BoxDecoration(
-                            color: AppColors.cardBackground.withOpacity(0.3),
+                            color: AppColors.cardBackground.withValues(alpha:0.3),
                             borderRadius: BorderRadius.circular(12),
-                            border: Border.all(color: AppColors.border.withOpacity(0.3)),
+                            border: Border.all(color: AppColors.border.withValues(alpha:0.3)),
                           ),
                           child: Center(
                             child: Text('No matching records. Run a search to test.', style: TextStyle(color: AppColors.textSecondary)),
@@ -2650,7 +2650,7 @@ class _RAGViewState extends State<RAGView> {
                                         Container(
                                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                           decoration: BoxDecoration(
-                                            color: settings.accentColor.withOpacity(0.12),
+                                            color: settings.accentColor.withValues(alpha:0.12),
                                             borderRadius: BorderRadius.circular(4),
                                           ),
                                           child: Text(category, style: TextStyle(color: settings.accentColor, fontSize: 10, fontWeight: FontWeight.bold)),
@@ -2694,7 +2694,7 @@ class _RAGViewState extends State<RAGView> {
         decoration: BoxDecoration(
           color: AppColors.cardBackground,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppColors.border.withOpacity(0.5)),
+          border: Border.all(color: AppColors.border.withValues(alpha:0.5)),
         ),
         child: Row(
           children: [
@@ -2812,6 +2812,8 @@ class _SettingsViewState extends State<SettingsView> {
                         ),
                         onPressed: () async {
                           await settings.setHfToken(_tokenController.text.trim());
+                          if (!mounted) return;
+                          // ignore: use_build_context_synchronously
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('HuggingFace Token saved successfully!')),
                           );
@@ -2845,6 +2847,8 @@ class _SettingsViewState extends State<SettingsView> {
                         ),
                         onPressed: () async {
                           await settings.setHfToken(_tokenController.text.trim());
+                          if (!mounted) return;
+                          // ignore: use_build_context_synchronously
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('HuggingFace Token saved successfully!')),
                           );
@@ -2898,7 +2902,7 @@ class _SettingsViewState extends State<SettingsView> {
                     max: 1.0,
                     divisions: 10,
                     activeColor: settings.accentColor,
-                    inactiveColor: settings.accentColor.withOpacity(0.2),
+                    inactiveColor: settings.accentColor.withValues(alpha:0.2),
                     label: settings.temperature.toStringAsFixed(1),
                     onChanged: (val) => settings.setTemperature(val),
                   ),
@@ -2911,7 +2915,7 @@ class _SettingsViewState extends State<SettingsView> {
                   decoration: BoxDecoration(
                     color: AppColors.cardBackground,
                     borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: AppColors.border.withOpacity(0.4)),
+                    border: Border.all(color: AppColors.border.withValues(alpha:0.4)),
                   ),
                   child: Text(
                     settings.temperature.toStringAsFixed(1),
@@ -2962,7 +2966,7 @@ class _SettingsViewState extends State<SettingsView> {
                       border: isSelected ? Border.all(color: Colors.white, width: 3) : null,
                       boxShadow: isSelected ? [
                         BoxShadow(
-                          color: color.withOpacity(0.5),
+                          color: color.withValues(alpha: 0.5),
                           blurRadius: 10,
                           spreadRadius: 2,
                         )
@@ -3021,10 +3025,10 @@ class _SettingsViewState extends State<SettingsView> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         decoration: BoxDecoration(
-          color: isSelected ? settings.accentColor.withOpacity(0.08) : AppColors.cardBackground,
+          color: isSelected ? settings.accentColor.withValues(alpha:0.08) : AppColors.cardBackground,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? settings.accentColor : AppColors.border.withOpacity(0.4),
+            color: isSelected ? settings.accentColor : AppColors.border.withValues(alpha:0.4),
             width: isSelected ? 1.5 : 1,
           ),
         ),
@@ -3060,10 +3064,10 @@ class _SettingsViewState extends State<SettingsView> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         decoration: BoxDecoration(
-          color: isSelected ? settings.accentColor.withOpacity(0.08) : AppColors.cardBackground,
+          color: isSelected ? settings.accentColor.withValues(alpha:0.08) : AppColors.cardBackground,
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isSelected ? settings.accentColor : AppColors.border.withOpacity(0.4),
+            color: isSelected ? settings.accentColor : AppColors.border.withValues(alpha:0.4),
             width: isSelected ? 1.5 : 1,
           ),
         ),
@@ -3162,7 +3166,22 @@ class FormattedMessageView extends StatelessWidget {
       final trimmedLine = line.trimLeft();
       
       // Header check
-      if (trimmedLine.startsWith('### ')) {
+      if (trimmedLine.startsWith('#### ')) {
+        lineWidgets.add(Padding(
+          padding: const EdgeInsets.only(top: 8, bottom: 4),
+          child: Text.rich(
+            TextSpan(
+              children: _parseInlineMarkdown(trimmedLine.substring(5)),
+              style: TextStyle(
+                color: isUser ? Colors.white : AppColors.textPrimary,
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
+                height: 1.3,
+              ),
+            ),
+          ),
+        ));
+      } else if (trimmedLine.startsWith('### ')) {
         lineWidgets.add(Padding(
           padding: const EdgeInsets.only(top: 10, bottom: 4),
           child: Text.rich(
@@ -3208,6 +3227,17 @@ class FormattedMessageView extends StatelessWidget {
           ),
         ));
       } 
+      // Divider / Horizontal Rule check
+      else if (RegExp(r'^(?:-{3,}|\*{3,}|_{3,})$').hasMatch(trimmedLine)) {
+        lineWidgets.add(Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12.0),
+          child: Divider(
+            color: isUser ? Colors.white.withValues(alpha:0.3) : AppColors.border.withValues(alpha:0.5),
+            height: 1,
+            thickness: 1,
+          ),
+        ));
+      }
       // Bullet list item check
       else if (trimmedLine.startsWith('- ') || trimmedLine.startsWith('* ') || trimmedLine.startsWith('• ')) {
         final content = trimmedLine.substring(2);
@@ -3334,8 +3364,8 @@ class FormattedMessageView extends StatelessWidget {
           style: TextStyle(
             fontFamily: 'Courier',
             backgroundColor: isUser 
-                ? Colors.black.withOpacity(0.25) 
-                : AppColors.textPrimary.withOpacity(0.08),
+                ? Colors.black.withValues(alpha:0.25) 
+                : AppColors.textPrimary.withValues(alpha:0.08),
             color: isUser 
                 ? Colors.white 
                 : AppColors.getReadableAccent(accentColor ?? AppColors.success),
@@ -3364,7 +3394,7 @@ class FormattedMessageView extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF1E1E1E), // Premium dark editor background
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white.withOpacity(0.1)),
+        border: Border.all(color: Colors.white.withValues(alpha:0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -3378,7 +3408,7 @@ class FormattedMessageView extends StatelessWidget {
                 topLeft: Radius.circular(10),
                 topRight: Radius.circular(10),
               ),
-              border: Border(bottom: BorderSide(color: Colors.white.withOpacity(0.05))),
+              border: Border(bottom: BorderSide(color: Colors.white.withValues(alpha:0.05))),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -3504,7 +3534,7 @@ class _SmallCopyIconButtonState extends State<_SmallCopyIconButton> {
           child: Icon(
             _copied ? Icons.check_circle_outline : Icons.content_copy_rounded,
             size: 14,
-            color: _copied ? AppColors.success : AppColors.textSecondary.withOpacity(0.7),
+            color: _copied ? AppColors.success : AppColors.textSecondary.withValues(alpha:0.7),
           ),
         ),
       ),
