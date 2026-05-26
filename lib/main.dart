@@ -12,6 +12,7 @@ import 'package:flutter_gemma/core/domain/model_source.dart';
 import 'package:flutter_gemma/core/utils/file_name_utils.dart';
 import 'package:flutter_gemma/core/di/service_registry.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -411,6 +412,16 @@ class ModelDownloadManager extends ChangeNotifier {
   Future<void> startModelDownload(AppModelInfo model) async {
     if (getDownloadState(model.id).isDownloading) return;
 
+    if (Platform.isAndroid) {
+      final status = await Permission.notification.status;
+      if (!status.isGranted) {
+        final result = await Permission.notification.request();
+        if (result.isDenied) {
+          debugPrint('⚠️ Notification permission denied, downloading without notifications.');
+        }
+      }
+    }
+
     final cancelToken = CancelToken();
     _downloads[model.id] = DownloadState(
       isDownloading: true,
@@ -428,7 +439,11 @@ class ModelDownloadManager extends ChangeNotifier {
         modelType: model.modelType,
         fileType: model.fileType,
       )
-      .fromNetwork(model.url, token: _settings.hfToken.isNotEmpty ? _settings.hfToken : null)
+      .fromNetwork(
+        model.url, 
+        token: _settings.hfToken.isNotEmpty ? _settings.hfToken : null,
+        foreground: Platform.isAndroid,
+      )
       .withCancelToken(cancelToken)
       .withProgress((progressPercent) {
         final now = DateTime.now();
@@ -486,6 +501,16 @@ class ModelDownloadManager extends ChangeNotifier {
   Future<void> startEmbedderDownload() async {
     const embedderId = 'gecko_64';
     if (getDownloadState(embedderId).isDownloading) return;
+
+    if (Platform.isAndroid) {
+      final status = await Permission.notification.status;
+      if (!status.isGranted) {
+        final result = await Permission.notification.request();
+        if (result.isDenied) {
+          debugPrint('⚠️ Notification permission denied, downloading without notifications.');
+        }
+      }
+    }
 
     final cancelToken = CancelToken();
     _downloads[embedderId] = DownloadState(
@@ -707,7 +732,7 @@ class ChatPlaygroundProvider extends ChangeNotifier {
         modelType: modelInfo.modelType,
         isThinking: modelInfo.supportThinking,
         tools: tools,
-        systemInstruction: "You are a helpful local assistant named Offline AI, running entirely offline on macOS using flutter_gemma and Metal acceleration.",
+        systemInstruction: "You are a helpful local assistant named Offline AI, running entirely offline on ${Platform.isAndroid ? 'Android' : 'macOS'} using flutter_gemma.",
       );
 
       _activeModelInfo = modelInfo;
@@ -1209,128 +1234,160 @@ class MainLayoutScreen extends StatefulWidget {
 class _MainLayoutScreenState extends State<MainLayoutScreen> {
   NavigationTab _activeTab = NavigationTab.models;
 
+  int _tabToIndex(NavigationTab tab) {
+    switch (tab) {
+      case NavigationTab.chat:
+        return 0;
+      case NavigationTab.models:
+        return 1;
+      case NavigationTab.settings:
+        return 2;
+      default:
+        return 0;
+    }
+  }
+
+  NavigationTab _indexToTab(int index) {
+    switch (index) {
+      case 0:
+        return NavigationTab.chat;
+      case 1:
+        return NavigationTab.models;
+      case 2:
+        return NavigationTab.settings;
+      default:
+        return NavigationTab.chat;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final settings = MultiProvider.of<SettingsProvider>(context);
     final chatProvider = MultiProvider.of<ChatPlaygroundProvider>(context);
+    final isAndroid = Platform.isAndroid;
+    
+    Widget mainBody = _buildActiveTabWidget();
+    
+    if (!isAndroid) {
+      mainBody = Row(
+        children: [
+          // 1. Sleek Navigation Sidebar
+          Container(
+            width: 250,
+            color: AppColors.sidebarBackground,
+            child: Column(
+              children: [
+                // Brand / Logo Header
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: settings.accentColor.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Icon(Icons.blur_on_rounded, color: settings.accentColor, size: 28),
+                      ),
+                      const SizedBox(width: 12),
+                      Text(
+                        'OFFLINE AI',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 2,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                
+                // Loaded Model Info Badge
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.cardBackground.withOpacity(0.4),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.border.withOpacity(0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: chatProvider.activeModelInfo != null ? AppColors.success : AppColors.textSecondary,
+                            boxShadow: chatProvider.activeModelInfo != null ? [
+                              BoxShadow(
+                                color: AppColors.success.withOpacity(0.4),
+                                blurRadius: 6,
+                                spreadRadius: 2,
+                              )
+                            ] : [],
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            chatProvider.activeModelInfo != null
+                                ? chatProvider.activeModelInfo!.name
+                                : 'No model loaded',
+                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, overflow: TextOverflow.ellipsis),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                
+                const SizedBox(height: 20),
+                
+                // Sidebar Navigation Links
+                _buildNavItem(NavigationTab.chat, Icons.forum_rounded, 'AI Chat'),
+                _buildNavItem(NavigationTab.models, Icons.developer_board_rounded, 'Model'),
+                // _buildNavItem(NavigationTab.rag, Icons.menu_book_rounded, 'Vector Knowledge'),
+                _buildNavItem(NavigationTab.settings, Icons.settings_suggest_rounded, 'Settings'),
+                
+                const Spacer(),
+                
+                // User metadata & macOS Platform indicator
+                Padding(
+                  padding: const EdgeInsets.all(24.0),
+                  child: Row(
+                    children: [
+                      Icon(Icons.apple, color: AppColors.textSecondary.withOpacity(0.7), size: 20),
+                      const SizedBox(width: 8),
+                      Text(
+                        'macOS Apple Silicon',
+                        style: TextStyle(fontSize: 11, color: AppColors.textSecondary.withOpacity(0.7)),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          
+          // 2. Primary Workspace Panel
+          Expanded(
+            child: Container(
+              color: AppColors.background,
+              child: _buildActiveTabWidget(),
+            ),
+          ),
+        ],
+      );
+    }
     
     return Scaffold(
       body: Stack(
         children: [
-          Row(
-            children: [
-              // 1. Sleek Navigation Sidebar
-              Container(
-                width: 250,
-                color: AppColors.sidebarBackground,
-                child: Column(
-                  children: [
-                    // Brand / Logo Header
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 32.0),
-                      child: Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: settings.accentColor.withOpacity(0.15),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Icon(Icons.blur_on_rounded, color: settings.accentColor, size: 28),
-                          ),
-                          const SizedBox(width: 12),
-                          Text(
-                            'OFFLINE AI',
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 2,
-                              color: AppColors.textPrimary,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    
-                    // Loaded Model Info Badge
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8),
-                      child: Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: AppColors.cardBackground.withOpacity(0.4),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: AppColors.border.withOpacity(0.3)),
-                        ),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 8,
-                              height: 8,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: chatProvider.activeModelInfo != null ? AppColors.success : AppColors.textSecondary,
-                                boxShadow: chatProvider.activeModelInfo != null ? [
-                                  BoxShadow(
-                                    color: AppColors.success.withOpacity(0.4),
-                                    blurRadius: 6,
-                                    spreadRadius: 2,
-                                  )
-                                ] : [],
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                chatProvider.activeModelInfo != null
-                                    ? chatProvider.activeModelInfo!.name
-                                    : 'No model loaded',
-                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w500, overflow: TextOverflow.ellipsis),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    
-                    const SizedBox(height: 20),
-                    
-                    // Sidebar Navigation Links
-                    _buildNavItem(NavigationTab.chat, Icons.forum_rounded, 'AI Chat'),
-                    _buildNavItem(NavigationTab.models, Icons.developer_board_rounded, 'Model'),
-                    // _buildNavItem(NavigationTab.rag, Icons.menu_book_rounded, 'Vector Knowledge'),
-                    _buildNavItem(NavigationTab.settings, Icons.settings_suggest_rounded, 'Settings'),
-                    
-                    const Spacer(),
-                    
-                    // User metadata & macOS Platform indicator
-                    Padding(
-                      padding: const EdgeInsets.all(24.0),
-                      child: Row(
-                        children: [
-                          Icon(Icons.apple, color: AppColors.textSecondary.withOpacity(0.7), size: 20),
-                          const SizedBox(width: 8),
-                          Text(
-                            'macOS Apple Silicon',
-                            style: TextStyle(fontSize: 11, color: AppColors.textSecondary.withOpacity(0.7)),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              
-              // 2. Primary Workspace Panel
-              Expanded(
-                child: Container(
-                  color: AppColors.background,
-                  child: _buildActiveTabWidget(),
-                ),
-              ),
-            ],
-          ),
-          
+          mainBody,
           // 3. Custom Function Calling Execution Overlay
           if (chatProvider.showToolOverlay)
             Positioned.fill(
@@ -1338,7 +1395,8 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
                 color: Colors.black.withOpacity(0.6),
                 child: Center(
                   child: Container(
-                    width: 380,
+                    constraints: const BoxConstraints(maxWidth: 380),
+                    margin: const EdgeInsets.all(24),
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
                       color: AppColors.cardBackground,
@@ -1403,6 +1461,46 @@ class _MainLayoutScreenState extends State<MainLayoutScreen> {
             ),
         ],
       ),
+      bottomNavigationBar: isAndroid
+          ? Container(
+              decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: AppColors.border.withOpacity(0.15), width: 1)),
+              ),
+              child: BottomNavigationBar(
+                backgroundColor: AppColors.sidebarBackground,
+                selectedItemColor: settings.accentColor,
+                unselectedItemColor: AppColors.textSecondary,
+                showUnselectedLabels: true,
+                type: BottomNavigationBarType.fixed,
+                elevation: 8,
+                currentIndex: _tabToIndex(_activeTab),
+                onTap: (index) => setState(() => _activeTab = _indexToTab(index)),
+                items: const [
+                  BottomNavigationBarItem(
+                    icon: Padding(
+                      padding: EdgeInsets.only(bottom: 4),
+                      child: Icon(Icons.forum_rounded),
+                    ),
+                    label: 'AI Chat',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Padding(
+                      padding: EdgeInsets.only(bottom: 4),
+                      child: Icon(Icons.developer_board_rounded),
+                    ),
+                    label: 'Model',
+                  ),
+                  BottomNavigationBarItem(
+                    icon: Padding(
+                      padding: EdgeInsets.only(bottom: 4),
+                      child: Icon(Icons.settings_suggest_rounded),
+                    ),
+                    label: 'Settings',
+                  ),
+                ],
+              ),
+            )
+          : null,
     );
   }
 
@@ -1472,18 +1570,22 @@ class ModelManagerView extends StatelessWidget {
     final settings = MultiProvider.of<SettingsProvider>(context);
     final dm = MultiProvider.of<ModelDownloadManager>(context);
     final chat = MultiProvider.of<ChatPlaygroundProvider>(context);
+    final isMobile = MediaQuery.of(context).size.width < 600;
 
     return Scaffold(
       body: CustomScrollView(
         slivers: [
           SliverPadding(
-            padding: const EdgeInsets.all(40.0),
+            padding: EdgeInsets.all(isMobile ? 16.0 : 40.0),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
-                Row(
+                Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 16,
+                  runSpacing: 12,
                   children: [
                     Text('Model Manager', style: Theme.of(context).textTheme.titleLarge),
-                    const Spacer(),
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: settings.accentColor,
@@ -1510,13 +1612,13 @@ class ModelManagerView extends StatelessWidget {
             ),
           ),
           SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 40.0),
+            padding: EdgeInsets.symmetric(horizontal: isMobile ? 16.0 : 40.0),
             sliver: SliverGrid(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: isMobile ? 1 : 2,
                 crossAxisSpacing: 20,
                 mainAxisSpacing: 20,
-                mainAxisExtent: 260,
+                mainAxisExtent: isMobile ? 300 : 260,
               ),
               delegate: SliverChildBuilderDelegate(
                 (context, index) {
@@ -1527,7 +1629,7 @@ class ModelManagerView extends StatelessWidget {
               ),
             ),
           ),
-          const SliverToBoxAdapter(child: SizedBox(height: 40)),
+          SliverToBoxAdapter(child: SizedBox(height: isMobile ? 24 : 40)),
         ],
       ),
     );
@@ -1544,6 +1646,7 @@ class ModelManagerView extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
                   padding: const EdgeInsets.all(10),
@@ -1558,10 +1661,12 @@ class ModelManagerView extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
+                      Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 10,
+                        runSpacing: 6,
                         children: [
                           const Text('Gecko 110M Embedding Model & Tokenizer', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                          const SizedBox(width: 10),
                           _buildBadge(isInstalled ? 'Installed' : 'Not Downloaded', isInstalled ? AppColors.success : AppColors.textSecondary),
                         ],
                       ),
@@ -1576,11 +1681,13 @@ class ModelManagerView extends StatelessWidget {
             if (dState.isDownloading) ...[
               _buildDownloadProgress(context, settings, dm, 'gecko_64', dState),
             ] else ...[
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 16,
+                runSpacing: 12,
                 children: [
                   Text('Size: ~111 MB', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
-                  const Spacer(),
                   if (isInstalled)
                     OutlinedButton.icon(
                       style: OutlinedButton.styleFrom(
@@ -1604,7 +1711,7 @@ class ModelManagerView extends StatelessWidget {
                       label: const Text('Download Embedder'),
                     ),
                 ],
-              ),
+              )
             ],
           ],
         ),
@@ -1645,7 +1752,9 @@ class ModelManagerView extends StatelessWidget {
             ),
             
             // Capability Row Badges
-            Row(
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
               children: [
                 if (model.supportImage) _buildTag('Multimodal'),
                 if (model.supportThinking) _buildTag('Thinking'),
@@ -1657,11 +1766,15 @@ class ModelManagerView extends StatelessWidget {
             if (dState.isDownloading) ...[
               _buildDownloadProgress(context, settings, dm, model.id, dState),
             ] else ...[
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                spacing: 8,
+                runSpacing: 8,
                 children: [
                   Text('Size: ${model.sizeGB.toStringAsFixed(2)} GB', style: TextStyle(color: AppColors.textSecondary, fontSize: 12)),
                   Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       if (isInstalled) ...[
                         OutlinedButton(
@@ -1836,6 +1949,7 @@ class _ChatPlaygroundViewState extends State<ChatPlaygroundView> {
   Widget build(BuildContext context) {
     final settings = MultiProvider.of<SettingsProvider>(context);
     final chat = MultiProvider.of<ChatPlaygroundProvider>(context);
+    final isMobile = MediaQuery.of(context).size.width < 600;
 
     // Trigger scroll to bottom on new message
     if (chat.messages.isNotEmpty) {
@@ -1862,34 +1976,72 @@ class _ChatPlaygroundViewState extends State<ChatPlaygroundView> {
         children: [
           // Chat Workspace Header
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 24.0),
-            child: Row(
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(chat.activeModelInfo!.name, style: Theme.of(context).textTheme.titleLarge),
-                    const SizedBox(height: 4),
-                    Text(
-                      settings.backend == PreferredBackend.gpu
-                          ? 'Secure, local conversation pipeline accelerated via Metal (GPU)'
-                          : 'Secure, local conversation pipeline running on Standard CPU (Highly Stable)',
-                      style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
-                    ),
-                  ],
-                ),
-                const Spacer(),
-                OutlinedButton.icon(
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.textSecondary,
-                    side: BorderSide(color: AppColors.border.withOpacity(0.5)),
-                  ),
-                  onPressed: () => chat.clearHistory(),
-                  icon: const Icon(Icons.delete_sweep_rounded, size: 16),
-                  label: const Text('Clear Chat'),
-                ),
-              ],
+            padding: EdgeInsets.symmetric(
+              horizontal: isMobile ? 16.0 : 32.0,
+              vertical: isMobile ? 16.0 : 24.0,
             ),
+            child: isMobile
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              chat.activeModelInfo!.name,
+                              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontSize: 20),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete_sweep_rounded),
+                            color: AppColors.textSecondary,
+                            tooltip: 'Clear Chat',
+                            onPressed: () => chat.clearHistory(),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        settings.backend == PreferredBackend.gpu
+                            ? 'Secure, local conversation pipeline accelerated via GPU'
+                            : 'Secure, local conversation pipeline running on Standard CPU (Highly Stable)',
+                        style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+                      ),
+                    ],
+                  )
+                : Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(chat.activeModelInfo!.name, style: Theme.of(context).textTheme.titleLarge),
+                            const SizedBox(height: 4),
+                            Text(
+                              settings.backend == PreferredBackend.gpu
+                                  ? (Platform.isAndroid
+                                      ? 'Secure, local conversation pipeline accelerated via GPU'
+                                      : 'Secure, local conversation pipeline accelerated via Metal (GPU)')
+                                  : 'Secure, local conversation pipeline running on Standard CPU (Highly Stable)',
+                              style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.textSecondary,
+                          side: BorderSide(color: AppColors.border.withOpacity(0.5)),
+                        ),
+                        onPressed: () => chat.clearHistory(),
+                        icon: const Icon(Icons.delete_sweep_rounded, size: 16),
+                        label: const Text('Clear Chat'),
+                      ),
+                    ],
+                  ),
           ),
           
           Divider(color: AppColors.border, height: 1),
@@ -1898,7 +2050,7 @@ class _ChatPlaygroundViewState extends State<ChatPlaygroundView> {
           Expanded(
             child: ListView.builder(
               controller: _scrollController,
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
+              padding: EdgeInsets.symmetric(horizontal: isMobile ? 16.0 : 32.0, vertical: 20.0),
               itemCount: chat.messages.length + (chat.isCurrentlyThinking ? 1 : 0),
               itemBuilder: (context, index) {
                 if (index == chat.messages.length) {
@@ -1935,11 +2087,10 @@ class _ChatPlaygroundViewState extends State<ChatPlaygroundView> {
               border: Border.all(color: AppColors.border.withOpacity(0.3)),
             ),
             child: Row(
-              mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(_getSystemIcon(msg.toolName), size: 14, color: settings.accentColor),
                 const SizedBox(width: 8),
-                Text(msg.text, style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontFamily: 'Courier')),
+                Expanded(child: Text(msg.text, style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontFamily: 'Courier'))),
               ],
             ),
           ),
@@ -2098,8 +2249,13 @@ class _ChatPlaygroundViewState extends State<ChatPlaygroundView> {
       }
     }
 
+    final isMobile = MediaQuery.of(context).size.width < 600;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 24.0),
+      padding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 16.0 : 32.0,
+        vertical: isMobile ? 16.0 : 24.0,
+      ),
       decoration: BoxDecoration(
         color: AppColors.background,
         border: Border.all(color: AppColors.border.withOpacity(0.3)),
@@ -2609,9 +2765,11 @@ class _SettingsViewState extends State<SettingsView> {
       _tokenController.text = settings.hfToken;
     }
 
+    final isMobile = MediaQuery.of(context).size.width < 600;
+
     return Scaffold(
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(40),
+        padding: EdgeInsets.all(isMobile ? 16.0 : 40.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -2625,43 +2783,76 @@ class _SettingsViewState extends State<SettingsView> {
             const Text('HuggingFace Access Token', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             const SizedBox(height: 10),
             Text(
-              'Required to verify credentials when downloading gated model repositories (e.g. Gemma 4). Your token is saved securely in your macOS application preferences.',
+              'Required to verify credentials when downloading gated model repositories (e.g. Gemma 4). Your token is saved securely in your local preferences.',
               style: TextStyle(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _tokenController,
-                    obscureText: _obscureToken,
-                    style: const TextStyle(fontSize: 13, fontFamily: 'Courier'),
-                    decoration: InputDecoration(
-                      hintText: 'Enter your hf_... token',
-                      suffixIcon: IconButton(
-                        icon: Icon(_obscureToken ? Icons.visibility_off : Icons.visibility, color: AppColors.textSecondary),
-                        onPressed: () => setState(() => _obscureToken = !_obscureToken),
+            isMobile
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      TextField(
+                        controller: _tokenController,
+                        obscureText: _obscureToken,
+                        style: const TextStyle(fontSize: 13, fontFamily: 'Courier'),
+                        decoration: InputDecoration(
+                          hintText: 'Enter your hf_... token',
+                          suffixIcon: IconButton(
+                            icon: Icon(_obscureToken ? Icons.visibility_off : Icons.visibility, color: AppColors.textSecondary),
+                            onPressed: () => setState(() => _obscureToken = !_obscureToken),
+                          ),
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: 12),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: settings.accentColor,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                        onPressed: () async {
+                          await settings.setHfToken(_tokenController.text.trim());
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('HuggingFace Token saved successfully!')),
+                          );
+                        },
+                        child: const Text('Save Token'),
+                      ),
+                    ],
+                  )
+                : Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: _tokenController,
+                          obscureText: _obscureToken,
+                          style: const TextStyle(fontSize: 13, fontFamily: 'Courier'),
+                          decoration: InputDecoration(
+                            hintText: 'Enter your hf_... token',
+                            suffixIcon: IconButton(
+                              icon: Icon(_obscureToken ? Icons.visibility_off : Icons.visibility, color: AppColors.textSecondary),
+                              onPressed: () => setState(() => _obscureToken = !_obscureToken),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: settings.accentColor,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
+                        ),
+                        onPressed: () async {
+                          await settings.setHfToken(_tokenController.text.trim());
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('HuggingFace Token saved successfully!')),
+                          );
+                        },
+                        child: const Text('Save Token'),
+                      ),
+                    ],
                   ),
-                ),
-                const SizedBox(width: 16),
-                ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: settings.accentColor,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
-                  ),
-                  onPressed: () async {
-                    await settings.setHfToken(_tokenController.text.trim());
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('HuggingFace Token saved successfully!')),
-                    );
-                  },
-                  child: const Text('Save Token'),
-                ),
-              ],
-            ),
             
             const SizedBox(height: 40),
             
@@ -2669,14 +2860,21 @@ class _SettingsViewState extends State<SettingsView> {
             const Text('Preferred Hardware Acceleration', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             const SizedBox(height: 10),
             Text(
-              'Select Metal GPU for fast parallel tensor computations, or fallback to CPU if GPU memory is constrained.',
+              Platform.isAndroid
+                  ? 'Select GPU for fast parallel tensor computations, or fallback to CPU if GPU memory is constrained.'
+                  : 'Select Metal GPU for fast parallel tensor computations, or fallback to CPU if GPU memory is constrained.',
               style: TextStyle(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 16),
-            Row(
+            Wrap(
+              spacing: 16,
+              runSpacing: 12,
               children: [
-                _buildRadioTile('Metal GPU (Recommended)', PreferredBackend.gpu, settings),
-                const SizedBox(width: 20),
+                _buildRadioTile(
+                  Platform.isAndroid ? 'GPU Acceleration' : 'Metal GPU (Recommended)',
+                  PreferredBackend.gpu,
+                  settings,
+                ),
                 _buildRadioTile('Standard CPU', PreferredBackend.cpu, settings),
               ],
             ),
@@ -2733,10 +2931,11 @@ class _SettingsViewState extends State<SettingsView> {
               style: TextStyle(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 16),
-            Row(
+            Wrap(
+              spacing: 16,
+              runSpacing: 12,
               children: [
                 _buildThemeTile('Dark Mode', Icons.dark_mode_rounded, true, settings),
-                const SizedBox(width: 20),
                 _buildThemeTile('Light Mode', Icons.light_mode_rounded, false, settings),
               ],
             ),
@@ -2746,14 +2945,15 @@ class _SettingsViewState extends State<SettingsView> {
             // Theme Accent color
             const Text('App Theme Accent Color', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
             const SizedBox(height: 16),
-            Row(
+            Wrap(
+              spacing: 16,
+              runSpacing: 12,
               children: AppColors.accents.keys.map((colorName) {
                 final color = AppColors.accents[colorName]!;
                 final isSelected = settings.accentName == colorName;
                 return GestureDetector(
                   onTap: () => settings.setAccentColor(colorName),
                   child: Container(
-                    margin: const EdgeInsets.only(right: 16),
                     width: 36,
                     height: 36,
                     decoration: BoxDecoration(
@@ -2778,17 +2978,23 @@ class _SettingsViewState extends State<SettingsView> {
             const SizedBox(height: 24),
             
             // Disk cleanup stats
-            Row(
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 16,
+              runSpacing: 12,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Storage Maintenance', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
-                    const SizedBox(height: 4),
-                    const Text('Clean temporary cache archives and remove unreferenced package downloads.', style: TextStyle(fontSize: 12)),
-                  ],
+                SizedBox(
+                  width: isMobile ? double.infinity : 400,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: const [
+                      Text('Storage Maintenance', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+                      SizedBox(height: 4),
+                      Text('Clean temporary cache archives and remove unreferenced package downloads.', style: TextStyle(fontSize: 12)),
+                    ],
+                  ),
                 ),
-                const Spacer(),
                 ElevatedButton.icon(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.border,
