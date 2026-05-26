@@ -3111,7 +3111,6 @@ class FormattedMessageView extends StatelessWidget {
   final String text;
   final bool isUser;
   final Color? accentColor;
-
   const FormattedMessageView({
     super.key,
     required this.text,
@@ -3124,11 +3123,16 @@ class FormattedMessageView extends StatelessWidget {
     final List<Widget> children = [];
     final RegExp codeBlockRegex = RegExp(r'```(\w*)\r?\n([\s\S]*?)(?:```|$)');
     
+    // Replace arrow LaTeX symbol
+    final processedText = text
+        .replaceAll(r'$\rightarrow$', '→')
+        .replaceAll(r'\rightarrow', '→');
+
     int lastIndex = 0;
-    for (final match in codeBlockRegex.allMatches(text)) {
+    for (final match in codeBlockRegex.allMatches(processedText)) {
       // Add preceding text segment
       if (match.start > lastIndex) {
-        final textSegment = text.substring(lastIndex, match.start);
+        final textSegment = processedText.substring(lastIndex, match.start);
         if (textSegment.isNotEmpty) {
           children.add(_buildTextSegment(context, textSegment));
         }
@@ -3143,8 +3147,8 @@ class FormattedMessageView extends StatelessWidget {
     }
     
     // Add remaining text
-    if (lastIndex < text.length) {
-      final textSegment = text.substring(lastIndex);
+    if (lastIndex < processedText.length) {
+      final textSegment = processedText.substring(lastIndex);
       if (textSegment.isNotEmpty) {
         children.add(_buildTextSegment(context, textSegment));
       }
@@ -3165,6 +3169,19 @@ class FormattedMessageView extends StatelessWidget {
       final line = lines[i];
       final trimmedLine = line.trimLeft();
       
+      // Table check
+      if (trimmedLine.startsWith('|') && trimmedLine.endsWith('|')) {
+        final List<String> tableLines = [];
+        while (i < lines.length && lines[i].trim().startsWith('|') && lines[i].trim().endsWith('|')) {
+          tableLines.add(lines[i]);
+          i++;
+        }
+        i--;
+        
+        lineWidgets.add(_buildTable(context, tableLines));
+        continue;
+      }
+
       // Header check
       if (trimmedLine.startsWith('#### ')) {
         lineWidgets.add(Padding(
@@ -3333,6 +3350,155 @@ class FormattedMessageView extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: lineWidgets,
+    );
+  }
+
+  Widget _buildTable(BuildContext context, List<String> tableLines) {
+    if (tableLines.isEmpty) return const SizedBox.shrink();
+    final settings = MultiProvider.of<SettingsProvider>(context);
+
+    // 1. Determine column alignments from alignment row
+    List<TextAlign> alignments = [];
+    int headerColsCount = 0;
+    
+    final firstRowRaw = tableLines[0].split('|');
+    final headerCells = firstRowRaw.sublist(1, firstRowRaw.length - 1).map((c) => c.trim()).toList();
+    headerColsCount = headerCells.length;
+
+    int bodyStartIndex = 1;
+    if (tableLines.length > 1) {
+      final secondLine = tableLines[1].trim();
+      if (RegExp(r'^\|(?:\s*:?-+:?\s*\|)+$').hasMatch(secondLine)) {
+        bodyStartIndex = 2;
+        final alignCells = secondLine.split('|').sublist(1, secondLine.split('|').length - 1);
+        for (final cell in alignCells) {
+          final trimmed = cell.trim();
+          if (trimmed.startsWith(':') && trimmed.endsWith(':')) {
+            alignments.add(TextAlign.center);
+          } else if (trimmed.endsWith(':')) {
+            alignments.add(TextAlign.right);
+          } else {
+            alignments.add(TextAlign.left);
+          }
+        }
+      }
+    }
+
+    while (alignments.length < headerColsCount) {
+      alignments.add(TextAlign.left);
+    }
+
+    final List<TableRow> tableRows = [];
+
+    // 2. Build Header Row
+    tableRows.add(
+      TableRow(
+        decoration: BoxDecoration(
+          color: isUser 
+              ? Colors.white.withValues(alpha: 0.1) 
+              : settings.accentColor.withValues(alpha: 0.08),
+        ),
+        children: headerCells.asMap().entries.map((entry) {
+          final colIndex = entry.key;
+          final cellText = entry.value;
+          final align = colIndex < alignments.length ? alignments[colIndex] : TextAlign.left;
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Text.rich(
+              TextSpan(
+                children: _parseInlineMarkdown(cellText),
+                style: TextStyle(
+                  color: isUser ? Colors.white : AppColors.textPrimary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              textAlign: align,
+            ),
+          );
+        }).toList(),
+      ),
+    );
+
+    // 3. Build Body Rows
+    int visibleRowIndex = 0;
+    for (int idx = bodyStartIndex; idx < tableLines.length; idx++) {
+      final rowRaw = tableLines[idx].split('|');
+      if (rowRaw.length < 2) continue;
+      final cells = rowRaw.sublist(1, rowRaw.length - 1).map((c) => c.trim()).toList();
+      
+      while (cells.length < headerColsCount) {
+        cells.add('');
+      }
+      if (cells.length > headerColsCount) {
+        cells.removeRange(headerColsCount, cells.length);
+      }
+
+      tableRows.add(
+        TableRow(
+          decoration: BoxDecoration(
+            color: visibleRowIndex % 2 == 0 
+                ? Colors.transparent 
+                : (isUser 
+                    ? Colors.white.withValues(alpha: 0.04) 
+                    : AppColors.cardBackground.withValues(alpha: 0.3)),
+          ),
+          children: cells.asMap().entries.map((entry) {
+            final colIndex = entry.key;
+            final cellText = entry.value;
+            final align = colIndex < alignments.length ? alignments[colIndex] : TextAlign.left;
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              child: Text.rich(
+                TextSpan(
+                  children: _parseInlineMarkdown(cellText),
+                  style: TextStyle(
+                    color: isUser ? Colors.white : AppColors.textPrimary,
+                    fontSize: 13,
+                  ),
+                ),
+                textAlign: align,
+              ),
+            );
+          }).toList(),
+        ),
+      );
+      visibleRowIndex++;
+    }
+
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 600;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12.0),
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: AppColors.border.withValues(alpha: 0.35),
+            width: 1,
+          ),
+        ),
+        clipBehavior: Clip.antiAlias,
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Container(
+            constraints: BoxConstraints(
+              minWidth: screenWidth - (isMobile ? 64 : 128),
+            ),
+            child: Table(
+              defaultVerticalAlignment: TableCellVerticalAlignment.middle,
+              border: TableBorder(
+                horizontalInside: BorderSide(
+                  color: AppColors.border.withValues(alpha: 0.25),
+                  width: 1,
+                ),
+              ),
+              children: tableRows,
+            ),
+          ),
+        ),
+      ),
     );
   }
 
